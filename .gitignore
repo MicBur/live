@@ -4,3 +4,5 @@ node_modules
 data/
 .gemini/
 *.log
+venv/
+__pycache__/

@@ -8,25 +8,29 @@ export function VoiceWidget({ onCommand }: { onCommand: (text: string) => void }
     const [waveData, setWaveData] = useState<number[]>([])
 
     useEffect(() => {
+        let interval: NodeJS.Timeout;
         if (isListening) {
-            const interval = setInterval(() => {
+            interval = setInterval(() => {
                 setWaveData(Array.from({ length: 20 }, () => Math.random() * 100))
             }, 100)
-            return () => clearInterval(interval)
+
+            // Simulate listening and auto-stop after 3 seconds
+            const timeout = setTimeout(() => {
+                setIsListening(false)
+                onCommand("Pay electric bill") // Mock command
+            }, 3000)
+
+            return () => {
+                clearInterval(interval)
+                clearTimeout(timeout)
+            }
         } else {
             setWaveData([])
         }
-    }, [isListening])
+    }, [isListening, onCommand])
 
     const toggleListening = () => {
         setIsListening(!isListening)
-        if (!isListening) {
-            // Simulate listening
-            setTimeout(() => {
-                setIsListening(false)
-                onCommand("Pay electric bill")
-            }, 3000)
-        }
     }
 
     return (

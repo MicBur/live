@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mic, Sparkles, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -18,6 +18,17 @@ export function MagicButton({ onRecordStart, onRecordStop, onTextSubmit, isProce
     const [textInputValue, setTextInputValue] = useState("")
     const [interimTranscript, setInterimTranscript] = useState("")
     const recognitionRef = useRef<any>(null)
+
+    const stopRecording = useCallback((finalText?: string) => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop()
+        }
+        setIsRecording(false)
+
+        if (finalText) {
+            onRecordStop?.(finalText)
+        }
+    }, [onRecordStop])
 
     useEffect(() => {
         // Initialize Web Speech API (kostenlos!)
@@ -64,7 +75,7 @@ export function MagicButton({ onRecordStart, onRecordStop, onTextSubmit, isProce
                 recognitionRef.current.stop()
             }
         }
-    }, [])
+    }, [stopRecording])
 
     const startRecording = () => {
         if (recognitionRef.current) {
@@ -78,17 +89,6 @@ export function MagicButton({ onRecordStart, onRecordStop, onTextSubmit, isProce
             }
         } else {
             alert('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome, Edge oder Safari.')
-        }
-    }
-
-    const stopRecording = (finalText?: string) => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop()
-        }
-        setIsRecording(false)
-
-        if (finalText) {
-            onRecordStop?.(finalText)
         }
     }
 

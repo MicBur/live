@@ -21,6 +21,7 @@ model User {
   healthLogs     HealthLog[]
   notes          Note[]
   trips          Trip[]
+  journals       JournalEntry[]
 }
 
 model Event {
@@ -114,4 +115,21 @@ model Trip {
 
   @@index([userId])
   @@index([startDate])
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  content   String
+  mood      String?  // "happy", "neutral", "sad", "stressed", etc.
+  sentimentScore Float? // -1.0 to 1.0
+  tags      String[]
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
 }

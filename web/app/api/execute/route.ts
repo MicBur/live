@@ -134,6 +134,9 @@ export async function POST(req: NextRequest) {
             case 'travel':
                 result = await handleTravel(action, data, userId);
                 break;
+            case 'journal':
+                result = await handleJournal(action, data, userId);
+                break;
             default:
                 return NextResponse.json({ error: 'Unknown category' }, { status: 400 });
         }
@@ -181,6 +184,40 @@ async function handleCalendar(action: string, data: any, userId: string, force =
 
         const event = await prisma.event.create({ data: newEventData });
         return { message: 'Event created', event };
+    }
+    return { message: 'Action not implemented' };
+}
+
+async function handleJournal(action: string, data: any, userId: string) {
+    if (action === 'create') {
+        // Simple sentiment analysis (mock)
+        const content = data.content || '';
+        let mood = 'neutral';
+        let sentimentScore = 0.0;
+
+        // In a real app, this would use an AI service
+        if (content.match(/happy|good|great|awesome|love/i)) {
+            mood = 'happy';
+            sentimentScore = 0.8;
+        } else if (content.match(/sad|bad|terrible|hate|depressed/i)) {
+            mood = 'sad';
+            sentimentScore = -0.5;
+        } else if (content.match(/stressed|busy|tired/i)) {
+            mood = 'stressed';
+            sentimentScore = -0.2;
+        }
+
+        const journal = await prisma.journalEntry.create({
+            data: {
+                content,
+                mood: data.mood || mood,
+                sentimentScore: data.sentimentScore || sentimentScore,
+                tags: data.tags || [],
+                date: new Date(),
+                userId,
+            }
+        });
+        return { message: 'Journal entry created', journal, detectedMood: mood };
     }
     return { message: 'Action not implemented' };
 }
@@ -337,6 +374,9 @@ export async function GET(req: NextRequest) {
         case 'travel':
             const trips = await prisma.trip.findMany({ where: { userId } });
             return NextResponse.json({ trips });
+        case 'journal':
+            const journals = await prisma.journalEntry.findMany({ where: { userId } });
+            return NextResponse.json({ journals });
         default:
             return NextResponse.json({ error: 'Unknown category' }, { status: 400 });
     }

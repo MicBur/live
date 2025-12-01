@@ -16,7 +16,9 @@ interface GrokResponse {
 
 export async function POST(req: NextRequest) {
     try {
-        const { text } = await req.json();
+        const { text, previousContext } = await req.json();
+        console.log("[API/Plan] Received text:", text);
+        if (previousContext) console.log("[API/Plan] Context:", previousContext);
 
         if (!text) {
             return NextResponse.json({ error: 'No text provided' }, { status: 400 });
@@ -31,41 +33,62 @@ export async function POST(req: NextRequest) {
         const messages: GrokMessage[] = [
             {
                 role: 'system',
-                content: `You are an AI assistant that classifies user input and extracts structured data for a Life OS application.
+                content: `You are an intelligent assistant for a dashboard. Your goal is to classify user input into a JSON plan.
 
 Categories:
-- calendar: Events, appointments, meetings
-- finance: Bills, income, expenses, payments
-- shopping: Shopping lists, items to buy
-- health: Sleep logs, doctor appointments, vitals
-- home: Home automation commands
-- notes: Knowledge base entries, notes, learnings
-- travel: Trip planning, packing lists
-- documents: Document storage, ID cards, licenses
-- journal: Mood tracking, daily thoughts
+- calendar: Events, appointments, meetings.
+- finance: Income, expenses, bills, balance updates.
+- shopping: Buying items, groceries, household goods, recipes.
+- health: Sleep, weight, water, steps, fitness.
+- notes: General notes, ideas, reminders.
+- travel: Trips, flights, hotels, trains, public transport.
+- journal: Diary entries, mood tracking.
+- question: Ambiguous inputs requiring clarification.
 
-Extract the following JSON structure:
+Output Format:
 {
-  "category": "calendar|finance|shopping|health|home|notes|travel|documents|journal",
-  "action": "create|update|delete|query",
-  "data": {
-    // Relevant fields based on category
-  }
+  "category": "category_name",
+  "action": "create" | "update" | "delete" | "read" | "ask",
+  "data": { ... }
 }
 
 Examples:
-Input: "Arzttermin am Donnerstag um 15 Uhr"
-Output: {"category":"calendar","action":"create","data":{"title":"Arzttermin","startTime":"Thursday 15:00","type":"appointment"}}
 
-Input: "Miete zahlen 800 Euro fällig am 1."
-Output: {"category":"finance","action":"create","data":{"type":"expense","category":"Rent","amount":800,"currency":"EUR","dueDate":"1st of month"}}
+Input: "Meeting with Daniel tomorrow at 10"
+Output: {"category":"calendar","action":"create","data":{"title":"Meeting with Daniel","startTime":"tomorrow at 10am"}}
 
-Input: "Ich brauche Milch und Brot"
-Output: {"category":"shopping","action":"create","data":{"items":["Milch","Brot"]}}`,
+Input: "Buy milk and coffee"
+Output: {"category":"shopping","action":"create","data":{"items":["Milk", "Coffee"]}}
+
+Input: "Ingredients for Spaghetti Carbonara"
+Output: {"category":"shopping","action":"create","data":{"items":["Spaghetti", "Eggs", "Pancetta", "Parmesan Cheese", "Black Pepper"]}}
+
+Input: "Pay electric bill 50 euro"
+Output: {"category":"finance","action":"create","data":{"type":"expense","category":"Bills","description":"Electric Bill","amount":50}}
+
+Input: "Mein Kontostand ist 500 Euro"
+Output: {"category":"finance","action":"update","data":{"balance":500}}
+
+Input: "Train to Rendsburg at 16:30"
+Output: {"category":"travel","action":"create","data":{"destination":"Rendsburg","mode":"transit","departureTime":"16:30"}}
+
+Input: "Meeting with Daniel"
+Output: {"category":"question","question":"Which Daniel? Daniel Smith or Daniel Jones?"}
+
+IMPORTANT:
+- If the user lists items like food, drinks, or household goods, it is ALWAYS a 'shopping' request.
+- If the user asks for a recipe (e.g., "Ingredients for X"), list ALL necessary ingredients in the 'items' array.
+- For shopping, ALWAYS return an 'items' array, even for single items.
+- Only classify as 'finance' if there is an explicit mention of paying, bills, money transfer, or specific amounts to be paid.
+- If the input is ambiguous (e.g., "Meeting with Daniel" but no time), return category "question" with the question text.
+- For travel requests involving trains, buses, or public transport, use category 'travel' and mode 'transit'.
+`,
             },
             {
                 role: 'user',
-                content: text,
+                content: previousContext
+                    ? `Previous Context: ${JSON.stringify(previousContext)}\nUser Input: "${text}"`
+                    : `Classify this input: "${text}"`,
             },
         ];
 
@@ -91,6 +114,7 @@ Output: {"category":"shopping","action":"create","data":{"items":["Milch","Brot"
 
         const grokResponse: GrokResponse = await response.json();
         const assistantMessage = grokResponse.choices[0]?.message?.content;
+        console.log("[API/Plan] Grok response:", assistantMessage);
 
         if (!assistantMessage) {
             return NextResponse.json({ error: 'No response from Grok' }, { status: 500 });

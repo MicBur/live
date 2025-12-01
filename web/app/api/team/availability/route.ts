@@ -41,6 +41,29 @@ export async function POST(req: NextRequest) {
             }
         });
 
+        // Mock events for Daniel if empty (for demo purposes)
+        if (userIds.includes('daniel') && userSchedules['daniel'].length === 0) {
+            const today = new Date(startOfDay);
+            userSchedules['daniel'] = [
+                {
+                    id: 'mock-daniel-1',
+                    title: 'Deep Work',
+                    startTime: new Date(today.setHours(9, 0, 0, 0)),
+                    endTime: new Date(today.setHours(11, 0, 0, 0)),
+                    userId: 'daniel'
+                },
+                {
+                    id: 'mock-daniel-2',
+                    title: 'Client Call',
+                    startTime: new Date(today.setHours(14, 0, 0, 0)),
+                    endTime: new Date(today.setHours(15, 0, 0, 0)),
+                    userId: 'daniel'
+                }
+            ];
+            // Add to events array for collision detection
+            events.push(...userSchedules['daniel']);
+        }
+
         // Find common free slots (simple algorithm)
         const freeSlots = [];
         let currentTime = new Date(startOfDay.setHours(9, 0, 0, 0)); // Start at 9 AM

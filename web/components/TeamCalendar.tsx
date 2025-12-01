@@ -14,7 +14,7 @@ interface UserSchedule {
     slots: TimeSlot[]
 }
 
-export function TeamCalendar({ isTeamMode }: { isTeamMode: boolean }) {
+export function TeamCalendar({ isTeamMode, refreshTrigger = 0 }: { isTeamMode: boolean, refreshTrigger?: number }) {
     const [schedules, setSchedules] = useState<Record<string, any[]>>({})
     const [freeSlots, setFreeSlots] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
@@ -23,7 +23,7 @@ export function TeamCalendar({ isTeamMode }: { isTeamMode: boolean }) {
         if (isTeamMode) {
             fetchAvailability()
         }
-    }, [isTeamMode])
+    }, [isTeamMode, refreshTrigger])
 
     const fetchAvailability = async () => {
         setLoading(true)

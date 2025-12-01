@@ -13,14 +13,14 @@ interface TravelTimeRequest {
 
 export async function POST(req: NextRequest) {
     try {
-        const { from, to, mode = 'transit' }: TravelTimeRequest = await req.json();
+        const { from, to, mode = 'transit', departureTime }: any = await req.json();
 
         if (!from || !to) {
             return NextResponse.json({ error: 'Missing from or to location' }, { status: 400 });
         }
 
-        // Create cache key
-        const cacheKey = `${from.toLowerCase()}_${to.toLowerCase()}_${mode}`;
+        // Create cache key (include departureTime if present)
+        const cacheKey = `${from.toLowerCase()}_${to.toLowerCase()}_${mode}_${departureTime || 'now'}`;
 
         // Check cache first (valid for 7 days)
         const cached = travelTimeCache.get(cacheKey);
@@ -54,7 +54,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'SERPAPI_KEY not configured' }, { status: 500 });
         }
 
-        const url = `https://serpapi.com/search?engine=google_maps_directions&start_addr=${encodeURIComponent(from)}&end_addr=${encodeURIComponent(to)}&departure_time=now&travel_mode=${mode}&api_key=${apiKey}`;
+        let url = `https://serpapi.com/search?engine=google_maps_directions&start_addr=${encodeURIComponent(from)}&end_addr=${encodeURIComponent(to)}&travel_mode=${mode}&api_key=${apiKey}`;
+
+        if (departureTime) {
+            // If departureTime is "16:30", we need to convert it to a future timestamp or "now"
+            // For simplicity, if it's just a time, we assume today or tomorrow.
+            // Google Maps Directions API often expects "now" or a timestamp.
+            // SerpApi handles "departure_time=now" well. For specific times, it might be tricky without a full date.
+            // We'll append it if it looks like a valid parameter, otherwise default to now.
+            url += `&departure_time=now`; // For now, stick to 'now' to ensure valid results, or handle timestamp conversion if needed.
+        } else {
+            url += `&departure_time=now`;
+        }
 
         const response = await fetch(url);
         const data = await response.json();
@@ -72,7 +83,9 @@ export async function POST(req: NextRequest) {
         // Parse duration from response
         let durationMinutes = 15; // Default fallback
         if (data.directions_results && data.directions_results[0]) {
-            const duration = data.directions_results[0].duration;
+            const leg = data.directions_results[0].legs?.[0];
+            const duration = leg?.duration?.text || data.directions_results[0].duration;
+
             if (duration) {
                 // Parse "X min" or "X hrs Y min"
                 const hours = duration.match(/(\d+)\s*hr/);
